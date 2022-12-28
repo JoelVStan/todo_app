@@ -1,5 +1,7 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AuthForm extends StatefulWidget {
   const AuthForm({super.key});
@@ -10,11 +12,48 @@ class AuthForm extends StatefulWidget {
 
 class _AuthFormState extends State<AuthForm> {
   
+  //-----------------------------------------
+
   final _formkey = GlobalKey<FormState> ();
   var _email = '';
   var _password = '';
   var _username = '';
   bool isLoginPage = false;
+
+  //-----------------------------------------
+
+  startauthentication() {
+    final validity = _formkey.currentState!.validate();
+    FocusScope.of(context).unfocus();
+    if(validity) {
+      _formkey.currentState!.save();
+      submitform(_email, _password, _username);
+    }
+  }
+
+  submitform(String email, String password, String username) async {
+    final auth = FirebaseAuth.instance;
+    UserCredential usercredential;  //AuthResult authresult;
+    try{
+      if(isLoginPage){
+        usercredential = await auth.signInWithEmailAndPassword(email: email, password: password);
+      }
+      else{
+        usercredential = await auth.createUserWithEmailAndPassword(email: email, password: password);
+        String uid = usercredential.user!.uid;
+        await FirebaseFirestore.instance.collection('users').doc(uid).set({
+          'username':username,
+          'email':email
+        });
+      }
+    }
+    catch(err){
+      print(err);
+      
+    }
+  }
+
+
   
   @override
   Widget build(BuildContext context) {
@@ -71,6 +110,7 @@ class _AuthFormState extends State<AuthForm> {
               ),
               SizedBox(height: 10),
               TextFormField(
+                obscureText: true,
                 keyboardType: TextInputType.emailAddress,
                 key: ValueKey('password'),
                 validator: (value) {
@@ -95,7 +135,9 @@ class _AuthFormState extends State<AuthForm> {
                 width: double.infinity,
                 height: 70,
                 child: ElevatedButton( 
-                  onPressed: () {}, 
+                  onPressed: () {
+                    startauthentication();
+                  }, 
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green,
                     shape: RoundedRectangleBorder(
